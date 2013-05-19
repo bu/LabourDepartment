@@ -1,0 +1,27 @@
+{
+  "name": "Taskmaster",
+  "version": "0.1.0",
+  "description": "A small CI server for generic taks",
+  "main": "server.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "mocha -R spec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bu/TaskMaster.git"
+  },
+  "keywords": [
+    "contiunous",
+    "integration",
+    "ci",
+    "taskmaster"
+  ],
+  "author": "Buwei Chiu <bu@hax4.in>",
+  "license": "MIT",
+  "devDependencies": {
+    "coffee-script": "*"
+  }
+}
