@@ -11,9 +11,6 @@ q = require "q"
 # worker info
 worker_info = {}
 
-# current job info
-jobInfo = null
-
 # log
 log = (message) ->
     console.log "[" + moment().format("YYYY-MM-DD HH:mm:SS Z") + "] ##{worker_info.id}: " + message
