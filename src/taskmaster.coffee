@@ -1,6 +1,11 @@
 # Taskmaster
 
-log = require("util").log
+moment = require "moment"
+
+# log
+log = (message) ->
+    console.log "[" + moment().format("YYYY-MM-DD HH:mm:SS Z") + "] TaskMaster: " + message
+ 
 fork = require("child_process").fork
 
 # we store all worker information here
@@ -32,7 +37,7 @@ startWork = (index, callback, force) ->
         if not workers[index].stop
             log "server ##{index} is stopped, and restart "
 
-            startWork index, () ->
+            startWork index, ->
                 return
             , true
     
@@ -44,11 +49,11 @@ startWork = (index, callback, force) ->
         # otherwise, we just move to next one
         startWork index+1, callback
 
-startWork 0, () ->
+startWork 0, ->
     log "Done"
 
     workers[0].process.send {
         command: "runBundle",
-        bundle: "test_shellscript.sh",
-        jobId: new Date().getTime()
+        bundle: "EumarkhScrapper",
+        jobBuildNumber: 1
     }
