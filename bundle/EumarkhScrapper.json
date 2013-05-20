@@ -26,11 +26,13 @@
         }
     ],
 
-    "after_build": [
-        {
-            "task": "hipchat.notify"
-        }
-    ],
+    "after_build": [],
 
-    "properities": {}
+    "notify": [
+        {
+            "type": "hipchat",
+            "token": "",
+            "room_id": ""
+        }
+    ]
 }
