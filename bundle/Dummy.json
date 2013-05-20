@@ -1,0 +1,34 @@
+{
+    "uuid": "7a59b34a-dd46-448d-a91c-adf43210064c",
+
+    "name": "Dummy",
+
+    "trigger": {
+        "remote_token": "f88a9f93-71e3-4748-a524-dcd3618b466d",
+        "cron": "* */12 * * *"
+    },
+
+    "source": {
+        "repoURL": "git@bitbucket.org:bu/capturer.git",
+        "type": "git"
+    },
+
+    "before_build": [],
+    
+    "build_tasks": [
+        {
+            "task": "shell",
+            "script": "npm install"
+        }
+    ],
+
+    "after_build": [],
+
+    "notify": [
+        {
+            "type": "hipchat",
+            "token": "",
+            "room_id": ""
+        }
+    ]
+}

@@ -54,6 +54,12 @@ startWork 0, ->
 
     workers[0].process.send {
         command: "runBundle",
+        bundle: "Dummy",
+        jobBuildNumber: 15
+    }
+
+    workers[1].process.send {
+        command: "runBundle",
         bundle: "EumarkhScrapper",
         jobBuildNumber: 1
     }
