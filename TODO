@@ -1,0 +1,12 @@
+TODO
+------------------
+ * refactor
+
+ * Make all tasks become new instance while execuating (so that different concurreny will not conflict)
+ * notify and save record to db
+
+ * cron trigger
+ * remote trigger
+
+ * restful api
+ * web interface to manage this
