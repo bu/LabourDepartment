@@ -11,6 +11,9 @@ q = require "q"
 # worker info
 worker_info = {}
 
+# current job info
+jobInfo = null
+
 # log
 log = (message) ->
     console.log "[" + moment().format("YYYY-MM-DD HH:mm:SS Z") + "] ##{worker_info.id}: " + message
@@ -28,27 +31,46 @@ process.on "message", (message) ->
 prepareMaterial = (jobInfo) ->
     deferred = q.defer()
 
-    log "start to preare material"
-
-    try
-        sourcePreparer = require path.join __dirname, "source", jobInfo.bundleObject.source.type
-    catch error
-        deferred.reject
-            stage: "Error while prepare the material for the build"
-            error: error
-
-        return
-    
-    sourcePreparer.update jobInfo, (err) ->
-        if err
-             deferred.reject
+    checkoutSource = ->
+        log "now we start to checkout the source"
+        
+        try
+            sourcePreparer = require path.join __dirname, "source", jobInfo.bundleObject.source.type
+        catch error
+            deferred.reject
                 stage: "Error while prepare the material for the build"
                 error: error
-        
-        log("succesfully prepared material")
-        
-        deferred.resolve jobInfo
 
+            return
+    
+        sourcePreparer.update jobInfo, (err) ->
+            if err
+                 deferred.reject
+                    stage: "Error while prepare the material for the build"
+                    error: error
+
+                return
+            
+            log("succesfully prepared material")
+        
+            deferred.resolve jobInfo
+
+    setImmediate ->
+        log "start to preare material"
+
+        log "we check for the factory directory"
+
+        fs.exists jobInfo.workingDirectory, (exist) ->
+            if not exist
+                log "directory is not exists, so we create it"
+
+                return fs.mkdir jobInfo.workingDirectory, (err) ->
+                    checkoutSource()
+                
+            log "directory is exists, so we just use it"
+
+            checkoutSource()
+        
     return deferred.promise
 
 executeTasks = (type, jobInfo) ->
@@ -67,6 +89,25 @@ executeTasks = (type, jobInfo) ->
         
         # then we got things to do
         # TODO: we need to process things here
+
+        iterateOverTasks = (tasks, index, callback) ->
+            if tasks.length == index
+                return callback null, index
+            
+            this_task = tasks[index]
+
+            try
+                taskOperator = require path.join __dirname, "task", this_task.task
+            catch error
+                return callback "Cannot found task [#{this_task.task}]", index
+                    
+            taskOperator.do this_task, jobInfo, (err) ->
+                # if task operator occur issues, we report back to the caller
+                if err
+                    return callback err, index
+                
+                setImmediate ->
+                    iterateOverTasks tasks, (index + 1), callback
         
         iterateOverTasks jobInfo.bundleObject[type], 0, (err, index) ->
             if err
@@ -76,13 +117,7 @@ executeTasks = (type, jobInfo) ->
 
             deferred.resolve jobInfo
         
-        iterateOverTasks = (tasks, index, callback) ->
-            if tasks.length == index
-                return callback null, index
-            
-
-
-
+        
     return deferred.promise
 
 executeBeforeBuild = (jobInfo) ->
@@ -95,7 +130,12 @@ executeAfterBuild = (jobInfo) ->
     executeTasks("after_build", jobInfo)
 
 reportResult = (jobInfo) ->
-    return
+    log "build successfully"
+    log jobInfo
+
+reportBadResult = (err) ->
+    log "bad build"
+    log err
 
 # events
 ev.on "setProcessTitle", (message) ->
@@ -156,12 +196,8 @@ ev.on "runBundle", (message) ->
             .then(executeBeforeBuild)
             .then(executeBuildTasks)
             .then(executeAfterBuild)
-            .then(reportResult)
-            .fail (error) ->
-                error.bundle = jobInfo.bundle
-                error.buildNumber = jobInfo.buildNumber
-            
-                ev.emit "buildFail", error
+            .then(reportResult, reportBadResult) # save result to db and send out notificatons
+            .done()
         
 ev.on "buildFail", (message) ->
     console.log message
