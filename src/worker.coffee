@@ -34,22 +34,18 @@ prepareMaterial = (jobInfo) ->
         try
             sourcePreparer = require path.join __dirname, "source", jobInfo.bundleObject.source.type
         catch error
-            deferred.reject
+            returndeferred.reject
                 stage: "Error while prepare the material for the build"
                 error: error
-
-            return
     
         sourcePreparer.update jobInfo, (err) ->
             if err
-                 deferred.reject
+                 return deferred.reject
                     stage: "Error while prepare the material for the build"
                     error: error
 
-                return
-            
             log("succesfully prepared material")
-        
+
             deferred.resolve jobInfo
 
     setImmediate ->
