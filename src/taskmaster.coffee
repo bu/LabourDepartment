@@ -4,7 +4,7 @@ moment = require "moment"
 
 # log
 log = (message) ->
-    console.log "[" + moment().format("YYYY-MM-DD HH:mm:SS Z") + "] TaskMaster: " + message
+    console.log "[" + moment().format("YYYY-MM-DD HH:mm:ss:SSS Z") + "] TaskMaster: " + message
  
 spawn = require("child_process").spawn
 
@@ -13,9 +13,6 @@ workers = []
 
 # this is how many worker we should keep in the same time
 MAX_WORKER_CONCURRENCY = 2
-
-process.on "message", (msg) ->
-    log msg
 
 startWork = (index, callback, force) ->
     # if we had been reach the maximun, then we go back
@@ -39,6 +36,21 @@ startWork = (index, callback, force) ->
     
     # creeated
     log "created worker #{index} - pid #{this_worker.process.pid}"
+    
+    # TODO:
+    #  for each message it was required to write into file
+    #  if worker is dead, then we should close it too
+    #  when start work, need to open a new file
+    #  log/BundleName-BuildNumber.log
+    this_worker.process.on "message", (msg) ->
+        if msg.command is "msg"
+            log JSON.stringify msg
+        if msg.command is "jobFinished"
+            this_worker.status = "DONE"
+            log "Worker - #{index}: job Finished"
+        if msg.command is "jobStarted"
+            this_worker.status = "WORKING"
+            log "Worker - #{index}: job Started"
     
     this_worker.process.on "close", ->
         # if this worker is not closed by taskmaster, then we restart it
