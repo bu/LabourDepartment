@@ -4,8 +4,6 @@ path = require "path"
 
 # 3rdpary
 moment = require "moment"
-
-# q
 q = require "q"
 
 # worker info
@@ -14,6 +12,7 @@ worker_info = {}
 # log
 log = (message) ->
     console.log "[" + moment().format("YYYY-MM-DD HH:mm:SS Z") + "] ##{worker_info.id}: " + message
+    process.send { msg: message }
 
 # events
 EventEmitter = require("events").EventEmitter
@@ -81,8 +80,6 @@ executeTasks = (type, jobInfo) ->
             return deferred.resolve jobInfo
         
         # then we got things to do
-        # TODO: we need to process things here
-
         iterateOverTasks = (tasks, index, callback) ->
             if tasks.length == index
                 return callback null, index
@@ -126,20 +123,30 @@ reportResult = (jobInfo) ->
     log "build successfully"
     log jobInfo
 
+    process.send
+        command: "jobFinished"
+
 reportBadResult = (err) ->
     log "bad build"
     log err
+
+    process.send
+        command: "jobFinished"
 
 # events
 ev.on "setProcessTitle", (message) ->
     # Setup the process title
 
     worker_info.id = message.index
-    process.title = "Labour Worker #" + message.index
+    process.title = "Worker No" + message.index
 
 ev.on "runBundle", (message) ->
     # first we will build jobInfo
     # this is an object that will be passed by in the flow
+
+    # let taskmaster know we've been started
+    process.send
+        command: "jobStarted"
 
     jobInfo =
         # current job related
@@ -149,6 +156,8 @@ ev.on "runBundle", (message) ->
 
         # working diretory
         workingDirectory: path.join __dirname, "factory", message.bundle
+        workerId: worker_info.id
+        workingBundle: message.bundle
         
         # about the bundle (task descritpion file)
         bundleLocation: path.join __dirname, "bundle", message.bundle + ".json"
@@ -189,7 +198,8 @@ ev.on "runBundle", (message) ->
             .then(executeBeforeBuild)
             .then(executeBuildTasks)
             .then(executeAfterBuild)
-            .then(reportResult, reportBadResult) # save result to db and send out notificatons
+            .then(reportResult)
+            .fail(reportBadResult)
             .done()
         
 ev.on "buildFail", (message) ->

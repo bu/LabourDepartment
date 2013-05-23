@@ -6,11 +6,16 @@ path = require "path"
 git_init = (jobInfo, callback) ->
     try
         git = spawn "git", ["clone", "-v", jobInfo.bundleObject.source.repoURL, "."], {
-            cwd: jobInfo.workingDirectory
+            cwd: jobInfo.workingDirectory,
         }
 
-        git.stdout.on "data", (m) -> console.log m.toString()
-        git.stderr.on "data", (m) -> console.log m.toString()
+        git.stdout.on "data", (msg) -> process.send
+            command: "msg"
+            content: msg.toString()
+
+        git.stderr.on "data", (msg) -> process.send
+            command: "msg"
+            content: msg.toString()
 
         git.on "exit", (code, signal) ->
             if code == 0
@@ -33,8 +38,13 @@ git_update = (jobInfo, callback) ->
                 cwd: jobInfo.workingDirectory
             }
 
-            git.stdout.on "data", (m) -> console.log m.toString()
-            git.stderr.on "data", (m) -> console.log m.toString()
+            git.stdout.on "data", (msg) -> process.send
+                command: "msg"
+                content: msg.toString()
+
+            git.stderr.on "data", (msg) -> process.send
+                command: "msg"
+                content: msg.toString()
 
             git.on "exit", (code, signal) ->
                 if code == 0
