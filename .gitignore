@@ -3,9 +3,5 @@
 !config/database.sample.js
 
 node_modules
-
-factory/*
-
-!factory/README.md
-
-*.log
+factory
+log
