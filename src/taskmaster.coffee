@@ -1,18 +1,41 @@
-# Taskmaster
+# Taskmaster.coffee
+# =====================
 
-moment = require "moment"
+# External Module Include
+# --------------------------
 
-# log
-log = (message) ->
-    console.log "[" + moment().format("YYYY-MM-DD HH:mm:ss:SSS Z") + "] TaskMaster: " + message
- 
+# native modules
+path = require "path"
 spawn = require("child_process").spawn
+
+# logger
+log = require(path.join __dirname, "logger").logFactory("TaskMaster")
+
+
+# Module-scope variables
+# ------------------------
 
 # we store all worker information here
 workers = []
 
 # this is how many worker we should keep in the same time
 MAX_WORKER_CONCURRENCY = 2
+
+# Receive parent message
+# ------------------------
+
+process.on "message", (message) ->
+    if message.command is "HALT"
+        workers.map (worker) ->
+            worker.stop = true
+            worker.process.kill()
+        
+        log "all worker dead, bye"
+        
+        process.exit(0)
+
+# Functions
+# ----------------
 
 startWork = (index, callback, force) ->
     # if we had been reach the maximun, then we go back
@@ -69,17 +92,11 @@ startWork = (index, callback, force) ->
         # otherwise, we just move to next one
         startWork index+1, callback
 
+# Start working
+# -----------------
 startWork 0, ->
-    log "Done"
+    log "Successfully started all workers"
 
-    workers[0].process.send {
-        command: "runBundle",
-        bundle: "Dummy",
-        jobBuildNumber: 15
-    }
-
-    workers[1].process.send {
-        command: "runBundle",
-        bundle: "EumarkhScrapper",
-        jobBuildNumber: 1
-    }
+    # send signal to app.coffee
+    process.send
+        signal: "READY"
