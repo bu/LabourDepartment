@@ -1,4 +1,11 @@
 *.js
-*.log
+
+!config/database.sample.js
+
 node_modules
-factory
+
+factory/*
+
+!factory/README.md
+
+*.log
