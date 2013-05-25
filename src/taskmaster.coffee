@@ -8,6 +8,10 @@
 path = require "path"
 spawn = require("child_process").spawn
 
+# database
+Accessor = require "Accessor_Singleton"
+BuildRecord = Accessor "build_results", "MySQL"
+
 # logger factory (to generate logger)
 loggerFactory = require path.join __dirname, "logger"
 
@@ -41,7 +45,29 @@ process.on "message", (message) ->
 
     if message.command is "runBundle"
         log "receive job request - trigger by #{message.trigger}"
-        awaitJob.push message
+
+        BuildRecord._query "SELECT MAX(`build_number`) + 1 AS `next_build_number` FROM `build_results` WHERE `bundle` = '#{message.bundle}';", (err, data) ->
+            if err
+                log err
+                return
+
+            next_build_number = data[0].next_build_number
+
+            if not next_build_number
+                next_build_number = 1
+            
+            BuildRecord.create
+                bundle: message.bundle
+                build_number: next_build_number
+                result: 0
+            , (err, info) ->
+                 if err
+                    log err
+                    return
+
+                message.jobBuildNumber = next_build_number
+
+                awaitJob.push message
 
 # Process work
 # ---------------
@@ -74,7 +100,6 @@ checkAwaitJobs = ->
             return
 
         new_job = awaitJob.pop()
-        new_job.jobBuildNumber = 1
         
         worker.process.send new_job
         worker.status = "BUSY"
@@ -121,13 +146,36 @@ startWork = (index, callback, force) ->
             this_worker.logger msg.msg
         
         if msg.command is "jobFinished"
-            this_worker.status = "FREE"
-            this_worker.logger = null
-            log "Worker - #{index}: job Finished"
+            log "receive worker said job is done, then we should update the database - result is #{msg.success}" 
+
+            log this_worker.bundle + "," + this_worker.build_number
+
+            BuildRecord.update
+                where: [
+                    ["bundle", "=", this_worker.bundle],
+                    "AND",
+                    ["build_number", "=", this_worker.buildNumber]
+                ]
+            ,
+                result: msg.success
+            , (err, info) ->
+                if err
+                    log err
+                    return
+                
+                this_worker.status = "FREE"
+                this_worker.logger = null
+                this_worker.bundle = null
+                this_worker.buildNumber = null
+                
+                log "Worker - #{index}: job Finished"
         
         if msg.command is "jobStarted"
-            this_worker.logger = loggerFactory "#{msg.bundle}-#{msg.buildNumber}"
             this_worker.status = "BUSY"
+            this_worker.logger = loggerFactory "#{msg.bundle}-#{msg.buildNumber}"
+            this_worker.bundle = msg.bundle
+            this_worker.buildNumber = msg.buildNumber
+
             log "Worker - #{index}: job Started"
     
     this_worker.process.on "close", ->

@@ -127,6 +127,7 @@ reportResult = (jobInfo) ->
     
     process.send
         command: "jobFinished"
+        success: true
 
 reportBadResult = (err) ->
     log "bad build"
@@ -134,6 +135,7 @@ reportBadResult = (err) ->
 
     process.send
         command: "jobFinished"
+        success: false
 
 # events
 ev.on "setProcessTitle", (message) ->
