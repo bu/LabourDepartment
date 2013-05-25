@@ -21,11 +21,11 @@ doJob = (task, job, callback) ->
 
             sh.stdout.on "data", (msg) -> process.send
                 command: "msg"
-                content: msg.toString()
+                msg: msg.toString()
 
             sh.stderr.on "data", (msg) -> process.send
                 command: "msg"
-                content: msg.toString()
+                msg: msg.toString()
 
             sh.on "exit", (code, signal) ->
                 if code == 0

@@ -11,10 +11,10 @@ worker_info = {}
 
 # log
 log = (message) ->
-    recorded_message "Worker ##{worker_info.id}: " + message
-    
+    recorded_message = "Worker ##{worker_info.id}: " + message
+
     process.send
-        command: msg
+        command: "msg"
         msg: recorded_message
 
 # events
@@ -124,10 +124,9 @@ executeAfterBuild = (jobInfo) ->
 
 reportResult = (jobInfo) ->
     log "build successfully"
-
+    
     process.send
         command: "jobFinished"
-
 
 reportBadResult = (err) ->
     log "bad build"
@@ -139,9 +138,7 @@ reportBadResult = (err) ->
 # events
 ev.on "setProcessTitle", (message) ->
     # Setup the process title
-
     worker_info.id = message.index
-    process.title = "Worker No" + message.index
 
 ev.on "runBundle", (message) ->
     # first we will build jobInfo
@@ -166,6 +163,8 @@ ev.on "runBundle", (message) ->
         
         # about the bundle (task descritpion file)
         bundleLocation: path.join __dirname, "bundle", message.bundle + ".json"
+    
+    log "jobInfo created"
 
     # load the json
     fs.readFile jobInfo.bundleLocation, (err, bundle_buffer) ->

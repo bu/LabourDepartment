@@ -11,11 +11,11 @@ git_init = (jobInfo, callback) ->
 
         git.stdout.on "data", (msg) -> process.send
             command: "msg"
-            content: msg.toString()
+            msg: msg.toString()
 
         git.stderr.on "data", (msg) -> process.send
             command: "msg"
-            content: msg.toString()
+            msg: msg.toString()
 
         git.on "exit", (code, signal) ->
             if code == 0
