@@ -8,9 +8,11 @@
 path = require "path"
 spawn = require("child_process").spawn
 
-# logger
-log = require(path.join __dirname, "logger").logFactory("TaskMaster")
+# logger factory (to generate logger)
+loggerFactory = require path.join __dirname, "logger"
 
+# log function used for all taskmaster
+log = loggerFactory "TaskMaster"
 
 # Module-scope variables
 # ------------------------
@@ -34,6 +36,10 @@ process.on "message", (message) ->
         
         process.exit(0)
 
+process.on "SIGTERM", ->
+    log "im dead, bye"
+    
+
 # Functions
 # ----------------
 
@@ -50,6 +56,7 @@ startWork = (index, callback, force) ->
         stdio: ["ipc"]
     
     this_worker.stop = false
+
     
     # setup process title
     this_worker.process.send {
@@ -67,11 +74,14 @@ startWork = (index, callback, force) ->
     #  log/BundleName-BuildNumber.log
     this_worker.process.on "message", (msg) ->
         if msg.command is "msg"
+
             log JSON.stringify msg
         if msg.command is "jobFinished"
             this_worker.status = "DONE"
             log "Worker - #{index}: job Finished"
         if msg.command is "jobStarted"
+            this_worker.logger = loggerFactory "#{msg.bundle}-#{msg.buildNumber}"
+
             this_worker.status = "WORKING"
             log "Worker - #{index}: job Started"
     

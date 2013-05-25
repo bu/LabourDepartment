@@ -11,8 +11,11 @@ worker_info = {}
 
 # log
 log = (message) ->
-    console.log "[" + moment().format("YYYY-MM-DD HH:mm:SS Z") + "] ##{worker_info.id}: " + message
-    process.send { msg: message }
+    recorded_message "Worker ##{worker_info.id}: " + message
+    
+    process.send
+        command: msg
+        msg: recorded_message
 
 # events
 EventEmitter = require("events").EventEmitter
@@ -121,10 +124,10 @@ executeAfterBuild = (jobInfo) ->
 
 reportResult = (jobInfo) ->
     log "build successfully"
-    log jobInfo
 
     process.send
         command: "jobFinished"
+
 
 reportBadResult = (err) ->
     log "bad build"
@@ -147,6 +150,8 @@ ev.on "runBundle", (message) ->
     # let taskmaster know we've been started
     process.send
         command: "jobStarted"
+        bundle: message.bundle
+        buildNumber: message.jobBuildNumber # current job build number eg: #306
 
     jobInfo =
         # current job related

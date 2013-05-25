@@ -19,8 +19,13 @@ doJob = (task, job, callback) ->
                 cwd: job.workingDirectory
             }
 
-            sh.stdout.on "data", (m) -> console.log m.toString()
-            sh.stderr.on "data", (m) -> console.log m.toString()
+            sh.stdout.on "data", (msg) -> process.send
+                command: "msg"
+                content: msg.toString()
+
+            sh.stderr.on "data", (msg) -> process.send
+                command: "msg"
+                content: msg.toString()
 
             sh.on "exit", (code, signal) ->
                 if code == 0

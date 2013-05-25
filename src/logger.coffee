@@ -1,3 +1,7 @@
+# native module
+fs = require "fs"
+path = require "path"
+
 # 3rd party
 moment = require "moment"
 
@@ -6,9 +10,13 @@ class Logger
 
     constructor: (@target)->
         @LogTarget = target
+        @LogFilepath = path.join __dirname, "log", @target + ".log"
 
         return (message) =>
-            console.log "[" + moment().format("YYYY-MM-DD HH:mm:ss:SSS Z") + "] #{@LogTarget}: " + message
+            recorded_message = "[" + moment().format("YYYY-MM-DD HH:mm:ss:SSS Z") + "] #{@LogTarget}: " + message + "\n"
 
-exports.logFactory = (target) ->
+            fs.appendFile @LogFilepath, recorded_message , ->
+                return true
+
+module.exports = (target) ->
     new Logger(target)
