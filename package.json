@@ -20,14 +20,18 @@
     "taskmaster"
   ],
   "author": "Buwei Chiu <bu@hax4.in>",
-  "license": "MIT",
+  "license": "BSD",
   "dependencies": {
     "q": "*",
     "moment": "*",
     "express": "*",
-    "cron": "~1.0.1"
+    "cron": "~1.0.1",
+    "Accessor": "*",
+    "Accessor_Singleton": "*",
+    "Accessor_MySQL": "*"
   },
   "devDependencies": {
     "coffee-script": "*"
-  }
+  },
+  "gitHead": "155a90e532709e2903d85e01a764e1458de98d0e"
 }
