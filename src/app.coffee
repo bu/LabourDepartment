@@ -7,6 +7,14 @@
 # native modules
 path = require "path"
 spawn = require("child_process").spawn
+fs = require "fs"
+
+# Opening check
+factoryDirectory = path.join __dirname, "factory"
+logDirectory = path.join __dirname, "log"
+
+fs.mkdirSync factoryDirectory unless fs.existsSync factoryDirectory
+fs.mkdirSync logDirectory unless fs.existsSync logDirectory
 
 # TaskMaster module
 # ----------------------
