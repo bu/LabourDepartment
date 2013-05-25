@@ -7,3 +7,4 @@ clean:
 	rm -rf log
 	rm -rf source
 	rm -rf task
+	rm -rf notify

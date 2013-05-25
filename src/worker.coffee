@@ -196,6 +196,11 @@ ev.on "runBundle", (message) ->
             
             # stop here
             return
+
+        # we should send to notify to the server
+        process.send
+            command: "jobNotifies"
+            notify: jobInfo.bundleObject.notify
         
         # after we successfully parse the bundle, then we can start work on it
         log "start working on main pipeline"

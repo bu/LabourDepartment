@@ -146,9 +146,9 @@ startWork = (index, callback, force) ->
             this_worker.logger msg.msg
         
         if msg.command is "jobFinished"
-            log "receive worker said job is done, then we should update the database - result is #{msg.success}" 
+            log "receive worker said job is done, then we should update the database - result is #{msg.success}"
 
-            log this_worker.bundle + "," + this_worker.build_number
+            log this_worker.bundle + "," + this_worker.buildNumber
 
             BuildRecord.update
                 where: [
@@ -162,14 +162,44 @@ startWork = (index, callback, force) ->
                 if err
                     log err
                     return
+
+                log "successfully update databse, and now we should notify via notifiers"
                 
-                this_worker.status = "FREE"
-                this_worker.logger = null
-                this_worker.bundle = null
-                this_worker.buildNumber = null
-                
-                log "Worker - #{index}: job Finished"
-        
+                iterateOverNotify = (build_result, notifications, index, callback) ->
+                    if notifications.length == index
+                        return callback()
+                    
+                    this_task = notifications[index]
+
+                    this_task.build_result = build_result
+                    
+                    try
+                        notifier = require path.join __dirname, "notify", this_task.type
+                    catch error
+                        return callback "Cannot found task [#{this_task.type}]", index
+                            
+                    notifier this_task, (err) ->
+                        # if task operator occur issues, we report back to the caller
+                        if err
+                            return callback err, index
+                        
+                        setImmediate ->
+                            iterateOverNotify build_result, notifications, index + 1, callback
+
+                iterateOverNotify msg.success, this_worker.notify, 0, ->
+                    log "all notifier is done"
+                    
+                    this_worker.status = "FREE"
+                    this_worker.logger = null
+                    this_worker.bundle = null
+                    this_worker.buildNumber = null
+                    this_worker.notify = null
+                    
+                    log "Worker - #{index}: job Finished"
+
+        if msg.command is "jobNotifies"
+            this_worker.notify = msg.notify ? []
+
         if msg.command is "jobStarted"
             this_worker.status = "BUSY"
             this_worker.logger = loggerFactory "#{msg.bundle}-#{msg.buildNumber}"
