@@ -24,7 +24,8 @@
   "dependencies": {
     "q": "*",
     "moment": "*",
-    "express": "*"
+    "express": "*",
+    "cron": "~1.0.1"
   },
   "devDependencies": {
     "coffee-script": "*"
