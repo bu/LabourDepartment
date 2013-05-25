@@ -1,11 +1,11 @@
 {
     "uuid": "8a59b34a-dd46-448d-a91c-adf43210064c",
 
-    "name": "Eumakh Scrapper",
+    "name": "EumarkhScrapper",
 
     "trigger": {
         "http.remote_token": "f88a9f93-71e3-4748-a524-dcd3618b466d",
-        "cron": "* */12 * * *"
+        "cron": "0 */12 * * *"
     },
 
     "source": {
