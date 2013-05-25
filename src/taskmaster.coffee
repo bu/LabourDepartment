@@ -20,6 +20,9 @@ log = loggerFactory "TaskMaster"
 # we store all worker information here
 workers = []
 
+# all awaiting job
+awaitJob = []
+
 # this is how many worker we should keep in the same time
 MAX_WORKER_CONCURRENCY = 2
 
@@ -36,8 +39,49 @@ process.on "message", (message) ->
         
         process.exit(0)
 
-process.on "SIGTERM", ->
-    log "im dead, bye"
+    if message.command is "runBundle"
+        log "receive job request - trigger by #{message.trigger}"
+        awaitJob.push message
+
+# Process work
+# ---------------
+checkAwaitJobs = ->
+    log "start to work on check for await job"
+
+    if awaitJob.length == 0
+        log "No job awaiting"
+
+        # we check next time
+        return setTimeout checkAwaitJobs, 5000
+    
+    log "okay, we got jobs to do (#{awaitJob.length} jobs), start to check for free worker"
+
+    free_workers = []
+
+    workers.map (worker) ->
+        if worker.status is "FREE"
+            free_workers.push worker
+
+    log "free workers #{free_workers.length}"
+    
+    if free_workers.length == 0
+        log "No worker free now, wait for next check"
+        
+        return setTimeout checkAwaitJobs, 5000
+    
+    free_workers.map (worker) ->
+        if awaitJob.length == 0
+            return
+
+        new_job = awaitJob.pop()
+        new_job.jobBuildNumber = 1
+        
+        worker.process.send new_job
+        worker.status = "BUSY"
+        
+        log "A job is assign to worker#" + worker.index + " - " + new_job.bundle
+
+     return setTimeout checkAwaitJobs, 5000
     
 
 # Functions
@@ -56,13 +100,13 @@ startWork = (index, callback, force) ->
         stdio: ["ipc"]
     
     this_worker.stop = false
+    this_worker.status = "FREE"
+    this_worker.index = index
 
-    
     # setup process title
-    this_worker.process.send {
-        command: "setProcessTitle",
+    this_worker.process.send
+        command: "setProcessTitle"
         index: index
-    }
     
     # creeated
     log "created worker #{index} - pid #{this_worker.process.pid}"
@@ -74,15 +118,16 @@ startWork = (index, callback, force) ->
     #  log/BundleName-BuildNumber.log
     this_worker.process.on "message", (msg) ->
         if msg.command is "msg"
-
-            log JSON.stringify msg
+            this_worker.logger msg.msg
+        
         if msg.command is "jobFinished"
-            this_worker.status = "DONE"
+            this_worker.status = "FREE"
+            this_worker.logger = null
             log "Worker - #{index}: job Finished"
+        
         if msg.command is "jobStarted"
             this_worker.logger = loggerFactory "#{msg.bundle}-#{msg.buildNumber}"
-
-            this_worker.status = "WORKING"
+            this_worker.status = "BUSY"
             log "Worker - #{index}: job Started"
     
     this_worker.process.on "close", ->
@@ -110,3 +155,7 @@ startWork 0, ->
     # send signal to app.coffee
     process.send
         signal: "READY"
+
+    # start check if there is await job
+    setImmediate ->
+        checkAwaitJobs()
