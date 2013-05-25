@@ -4,7 +4,7 @@
     "name": "Dummy",
 
     "trigger": {
-        "remote_token": "f88a9f93-71e3-4748-a524-dcd3618b466d",
+        "http.remote_token": "f88a9f93-71e3-4748-a524-dcd3618b466d",
         "cron": "* */12 * * *"
     },
 
