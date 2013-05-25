@@ -21,6 +21,11 @@
   ],
   "author": "Buwei Chiu <bu@hax4.in>",
   "license": "MIT",
+  "dependencies": {
+    "q": "*",
+    "moment": "*",
+    "express": "*"
+  },
   "devDependencies": {
     "coffee-script": "*"
   }
