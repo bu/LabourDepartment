@@ -28,7 +28,8 @@
     "cron": "~1.0.1",
     "Accessor": "*",
     "Accessor_Singleton": "*",
-    "Accessor_MySQL": "*"
+    "Accessor_MySQL": "*",
+    "request": "*"
   },
   "devDependencies": {
     "coffee-script": "*"
