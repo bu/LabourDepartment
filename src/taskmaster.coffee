@@ -8,24 +8,20 @@
 path = require "path"
 spawn = require("child_process").spawn
 
-# database
-Accessor = require "Accessor_Singleton"
-BuildRecord = Accessor "build_results", "MySQL"
-
 # logger factory (to generate logger)
 loggerFactory = require path.join __dirname, "logger"
 
 # log function used for all taskmaster
 log = loggerFactory "TaskMaster"
 
+# job_helper
+jobHelper = require path.join __dirname, "lib", "tm.job"
+
 # Module-scope variables
 # ------------------------
 
 # we store all worker information here
 workers = []
-
-# all awaiting job
-awaitJob = []
 
 # this is how many worker we should keep in the same time
 MAX_WORKER_CONCURRENCY = 2
@@ -44,70 +40,10 @@ process.on "message", (message) ->
         process.exit(0)
 
     if message.command is "runBundle"
-        log "receive job request - trigger by #{message.trigger}"
+        log "received job request - trigger by #{message.trigger}"
 
-        BuildRecord._query "SELECT MAX(`build_number`) + 1 AS `next_build_number` FROM `build_results` WHERE `bundle` = '#{message.bundle}';", (err, data) ->
-            if err
-                log err
-                return
-
-            next_build_number = data[0].next_build_number
-
-            if not next_build_number
-                next_build_number = 1
-            
-            BuildRecord.create
-                bundle: message.bundle
-                build_number: next_build_number
-                result: 0
-            , (err, info) ->
-                 if err
-                    log err
-                    return
-
-                message.jobBuildNumber = next_build_number
-
-                awaitJob.push message
-
-# Process work
-# ---------------
-checkAwaitJobs = ->
-    log "start to work on check for await job"
-
-    if awaitJob.length == 0
-        log "No job awaiting"
-
-        # we check next time
-        return setTimeout checkAwaitJobs, 5000
-    
-    log "okay, we got jobs to do (#{awaitJob.length} jobs), start to check for free worker"
-
-    free_workers = []
-
-    workers.map (worker) ->
-        if worker.status is "FREE"
-            free_workers.push worker
-
-    log "free workers #{free_workers.length}"
-    
-    if free_workers.length == 0
-        log "No worker free now, wait for next check"
-        
-        return setTimeout checkAwaitJobs, 5000
-    
-    free_workers.map (worker) ->
-        if awaitJob.length == 0
-            return
-
-        new_job = awaitJob.pop()
-        
-        worker.process.send new_job
-        worker.status = "BUSY"
-        
-        log "A job is assign to worker#" + worker.index + " - " + new_job.bundle
-
-     return setTimeout checkAwaitJobs, 5000
-    
+        jobHelper.createJob message, ->
+            log "processed job request - trigger by #{message.trigger}"
 
 # Functions
 # ----------------
@@ -136,57 +72,15 @@ startWork = (index, callback, force) ->
     # creeated
     log "created worker #{index} - pid #{this_worker.process.pid}"
     
-    # TODO:
-    #  for each message it was required to write into file
-    #  if worker is dead, then we should close it too
-    #  when start work, need to open a new file
-    #  log/BundleName-BuildNumber.log
     this_worker.process.on "message", (msg) ->
         if msg.command is "msg"
             this_worker.logger msg.msg
         
         if msg.command is "jobFinished"
-            log "receive worker said job is done, then we should update the database - result is #{msg.success}"
+            log "receive worker said job is done, then we should update the database - result is #{msg.success} for #{this_worker.bundle} @ #{this_worker.buildNumber}"
 
-            log this_worker.bundle + "," + this_worker.buildNumber
-
-            BuildRecord.update
-                where: [
-                    ["bundle", "=", this_worker.bundle],
-                    "AND",
-                    ["build_number", "=", this_worker.buildNumber]
-                ]
-            ,
-                result: msg.success
-            , (err, info) ->
-                if err
-                    log err
-                    return
-
-                log "successfully update databse, and now we should notify via notifiers"
-                
-                iterateOverNotify = (build_result, notifications, index, callback) ->
-                    if notifications.length == index
-                        return callback()
-                    
-                    this_task = notifications[index]
-
-                    this_task.build_result = build_result
-                    
-                    try
-                        notifier = require path.join __dirname, "notify", this_task.type
-                    catch error
-                        return callback "Cannot found task [#{this_task.type}]", index
-                            
-                    notifier this_task, (err) ->
-                        # if task operator occur issues, we report back to the caller
-                        if err
-                            return callback err, index
-                        
-                        setImmediate ->
-                            iterateOverNotify build_result, notifications, index + 1, callback
-
-                iterateOverNotify msg.success, this_worker.notify, 0, ->
+            jobHelper.updateStatus this_worker, msg.success, ->
+                jobHelper.notifyAll this_worker, this_worker.notify, msg.success, ->
                     log "all notifier is done"
                     
                     this_worker.status = "FREE"
@@ -196,7 +90,7 @@ startWork = (index, callback, force) ->
                     this_worker.notify = null
                     
                     log "Worker - #{index}: job Finished"
-
+ 
         if msg.command is "jobNotifies"
             this_worker.notify = msg.notify ? []
 
@@ -236,4 +130,7 @@ startWork 0, ->
 
     # start check if there is await job
     setImmediate ->
-        checkAwaitJobs()
+        log "now we assign workers to await job checker"
+
+        jobHelper.setWorkers workers
+        jobHelper.checkAwaitJobs()

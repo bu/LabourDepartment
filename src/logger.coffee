@@ -5,9 +5,8 @@ path = require "path"
 # 3rd party
 moment = require "moment"
 
+# logger class
 class Logger
-    @LogTarget: ""
-
     constructor: (@target)->
         @LogTarget = target
         @LogFilepath = path.join __dirname, "log", @target + ".log"
@@ -18,5 +17,6 @@ class Logger
             fs.appendFile @LogFilepath, recorded_message , ->
                 return true
 
+# expose to outside
 module.exports = (target) ->
     new Logger(target)
